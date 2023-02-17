@@ -95,11 +95,11 @@ namespace tc::input {
 		sstream >> distance;
 
 		std::string to;
-		// считываем "m"
+		// СЃС‡РёС‚С‹РІР°РµРј "m"
 		sstream >> to;
-		// считываем "to"
+		// СЃС‡РёС‚С‹РІР°РµРј "to"
 		sstream >> to;
-		// считываем имя остановки
+		// СЃС‡РёС‚С‹РІР°РµРј РёРјСЏ РѕСЃС‚Р°РЅРѕРІРєРё
 		std::getline(sstream, to);
 
 		return { to.substr(1), distance};
