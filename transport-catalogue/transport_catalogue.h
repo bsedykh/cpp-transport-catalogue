@@ -9,43 +9,13 @@
 #include <utility>
 #include <vector>
 
-#include "geo.h"
+#include "domain.h"
 
 namespace tc {
 
-	namespace transport {
-
-		struct StopInfo {
-			std::string name;
-			std::optional<std::vector<std::string>> buses;
-		};
-
-		struct BusInfo {
-			struct Stats {
-				size_t stops;
-				size_t unique_stops;
-				double length;
-				double curvature;
-			};
-
-			std::string name;
-			std::optional<Stats> stats;
-		};
-
-		class Catalogue {
-			struct Stop {
-				std::string name;
-				geo::Coordinates coordinates;
-			};
-
+		class TransportCatalogue {
 			struct StopsHasher {
 				size_t operator() (const std::pair<const Stop*, const Stop*>& stops) const;
-			};
-
-			struct Bus {
-				std::string name;
-				bool ring;
-				std::vector<const Stop*> stops;
 			};
 
 			struct SetOfBusesCmp {
@@ -59,11 +29,13 @@ namespace tc {
 			};
 
 		public:
-			void AddStop(const std::string& name, const geo::Coordinates& coordinates);
+			void AddStop(std::string name, geo::Coordinates coordinates);
 			void AddDistance(const std::string& from, const std::string& to, uint32_t distance);
-			void AddBus(const std::string& name, bool ring, const std::vector<std::string>& stop_names);
-			StopInfo GetStopInfo(const std::string& name) const;
-			BusInfo GetBusInfo(const std::string& name) const;
+			void AddBus(std::string name, bool ring, const std::vector<std::string>& stop_names);
+			
+			std::vector<const Bus*> GetBuses() const;
+			std::optional<StopInfo> GetStopInfo(const std::string& name) const;
+			std::optional<BusInfo> GetBusInfo(const std::string& name) const;			
 
 		private:
 			std::deque<Stop> stops_;
@@ -80,6 +52,4 @@ namespace tc {
 			double ComputeDistance(const Stop* from, const Stop* to, DistanceType type) const;
 		};
 
-	}
-
-}
+} // namespace tc

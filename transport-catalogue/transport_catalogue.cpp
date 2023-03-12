@@ -4,35 +4,35 @@
 
 #include "transport_catalogue.h"
 
-namespace tc::transport{
+namespace tc {
 
-	bool Catalogue::SetOfBusesCmp::operator() (const Bus* lhs, const Bus* rhs) const {
+	bool TransportCatalogue::SetOfBusesCmp::operator() (const Bus* lhs, const Bus* rhs) const {
 		return lhs->name < rhs->name;
 	}
 
-	size_t Catalogue::StopsHasher::operator() (const std::pair<const Stop*, const Stop*>& stops) const {
+	size_t TransportCatalogue::StopsHasher::operator() (const std::pair<const Stop*, const Stop*>& stops) const {
 		std::hash<const Stop*> hasher;
 		return hasher(stops.first) + 37 * hasher(stops.second);
 	}
 
-	void Catalogue::AddStop(const std::string& name, const geo::Coordinates& coordinates) {
-		Stop stop{ name, coordinates };
+	void TransportCatalogue::AddStop(std::string name, geo::Coordinates coordinates) {
+		Stop stop{ std::move(name), std::move(coordinates) };
 		stops_.push_back(std::move(stop));
 		name_to_stop_.emplace(stops_.back().name, &stops_.back());
 		stop_to_buses_.emplace(&stops_.back(), SetOfBuses());
 	}
 
-	void Catalogue::AddDistance(const std::string& from, const std::string& to, uint32_t distance) {
+	void TransportCatalogue::AddDistance(const std::string& from, const std::string& to, uint32_t distance) {
 		auto stop_from = FindStop(from);
 		auto stop_to = FindStop(to);
 		std::pair<const Stop*, const Stop*> key(stop_from, stop_to);
 		stops_to_distance_.emplace(key, distance);
 	}
 
-	void Catalogue::AddBus(const std::string& name, bool ring, const std::vector<std::string>& stop_names) {
+	void TransportCatalogue::AddBus(std::string name, bool ring, const std::vector<std::string>& stop_names) {
 		assert(stop_names.size() > 1);
-		Bus bus{ name, ring, {} };
-		
+		Bus bus{ std::move(name), ring, {} };
+
 		std::vector<const Stop*> stops;
 		stops.reserve(stop_names.size());
 		for (const auto& stop_name : stop_names) {
@@ -40,19 +40,32 @@ namespace tc::transport{
 			stops.push_back(stop);
 		}
 		bus.stops = std::move(stops);
-		
+
 		buses_.push_back(std::move(bus));
 		name_to_bus_.emplace(buses_.back().name, &buses_.back());
 		AddBusToStops(buses_.back());
 	}
 
-	StopInfo Catalogue::GetStopInfo(const std::string& name) const {
-		StopInfo stop_info{ name, {} };
+	std::vector<const Bus*> TransportCatalogue::GetBuses() const {
+		std::vector<const Bus*> buses;
+		buses.reserve(buses_.size());
+
+		for (const auto& bus : buses_) {
+			buses.push_back(&bus);
+		
+		}
+
+		return buses;
+	}
+
+	std::optional<StopInfo> TransportCatalogue::GetStopInfo(const std::string& name) const {
 		auto stop = FindStop(name);
 		if (!stop) {
-			return stop_info;
+			return std::nullopt;
 		}
-		
+
+		StopInfo stop_info;
+
 		const auto& set_of_buses = stop_to_buses_.at(stop);
 		std::vector<std::string> buses;
 		buses.reserve(set_of_buses.size());
@@ -64,11 +77,10 @@ namespace tc::transport{
 		return stop_info;
 	}
 
-	BusInfo Catalogue::GetBusInfo(const std::string& name) const {
-		BusInfo info{ name, {} };
+	std::optional<BusInfo> TransportCatalogue::GetBusInfo(const std::string& name) const {
 		auto bus = FindBus(name);
 		if (!bus) {
-			return info;
+			return std::nullopt;
 		}
 
 		auto& stops = bus->stops;
@@ -77,7 +89,7 @@ namespace tc::transport{
 		std::unordered_set<const Stop*> unique_stops;
 		double fact_length = 0.0;
 		double geo_length = 0.0;
-		
+
 		for (size_t i = 0; i < stops.size() - 1; ++i) {
 			fact_length += ComputeDistance(stops[i], stops[i + 1], DistanceType::FACT);
 			geo_length += ComputeDistance(stops[i], stops[i + 1], DistanceType::GEO);
@@ -93,12 +105,11 @@ namespace tc::transport{
 		}
 
 		assert(geo_length > 0.0);
-		info.stats = {stops_num, unique_stops.size(), fact_length, fact_length / geo_length};
 
-		return info;
+		return BusInfo{ static_cast<int>(stops_num), static_cast<int>(unique_stops.size()), fact_length, fact_length / geo_length };
 	}
 
-	const Catalogue::Stop* Catalogue::FindStop(const std::string& name) const {
+	const Stop* TransportCatalogue::FindStop(const std::string& name) const {
 		const auto it = name_to_stop_.find(name);
 		if (it != name_to_stop_.end()) {
 			return it->second;
@@ -108,7 +119,7 @@ namespace tc::transport{
 		}
 	}
 
-	const Catalogue::Bus* Catalogue::FindBus(const std::string& name) const {
+	const Bus* TransportCatalogue::FindBus(const std::string& name) const {
 		const auto it = name_to_bus_.find(name);
 		if (it != name_to_bus_.end()) {
 			return it->second;
@@ -118,13 +129,13 @@ namespace tc::transport{
 		}
 	}
 
-	void Catalogue::AddBusToStops(const Bus& bus) {
+	void TransportCatalogue::AddBusToStops(const Bus& bus) {
 		for (auto stop : bus.stops) {
 			stop_to_buses_[stop].insert(&bus);
 		}
 	}
 
-	double Catalogue::ComputeDistance(const Stop* from, const Stop* to, DistanceType type) const {
+	double TransportCatalogue::ComputeDistance(const Stop* from, const Stop* to, DistanceType type) const {
 		if (type == DistanceType::FACT) {
 			auto it = stops_to_distance_.find({ from, to });
 			if (it != stops_to_distance_.end()) {
@@ -137,6 +148,7 @@ namespace tc::transport{
 			}
 		}
 
-		return geo::detail::ComputeDistance(from->coordinates, to->coordinates);
+		return geo::ComputeDistance(from->coordinates, to->coordinates);
 	}
-}
+
+} // namespace tc
