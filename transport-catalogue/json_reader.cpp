@@ -4,6 +4,7 @@
 #include <variant>
 
 #include "json_reader.h"
+#include "json_builder.h"
 
 using namespace std::literals;
 
@@ -153,32 +154,29 @@ namespace io {
 	namespace {
 
 		struct StatResultPrinter {
-			json::Dict& dict;
+			json::BuilderDict& dict;
 
 			void operator()(std::monostate) const {
-				dict.emplace("error_message"s, "not found"s);
+				dict.Key("error_message"s).Value("not found"s);
 			}
 
 			void operator()(tc::BusInfo bus_info) const {
-				dict.emplace("curvature"s, bus_info.curvature);
-				dict.emplace("route_length"s, bus_info.length);
-				dict.emplace("stop_count"s, bus_info.stops);
-				dict.emplace("unique_stop_count"s, bus_info.unique_stops);
+				dict.Key("curvature"s).Value(bus_info.curvature);
+				dict.Key("route_length"s).Value(bus_info.length);
+				dict.Key("stop_count"s).Value(bus_info.stops);
+				dict.Key("unique_stop_count"s).Value(bus_info.unique_stops);
 			}
 
 			void operator()(tc::StopInfo stop_info) const {
-				json::Array json_array;
-				json_array.reserve(stop_info.buses.size());
-
+				auto json_array = dict.Key("buses"s).StartArray();
 				for (auto& bus : stop_info.buses) {
-					json_array.push_back(std::move(bus));
+					json_array.Value(std::move(bus));
 				}
-
-				dict.emplace("buses"s, std::move(json_array));
+				json_array.EndArray();
 			}
 
 			void operator()(std::string map_info) const {
-				dict.emplace("map"s, std::move(map_info));
+				dict.Key("map"s).Value(std::move(map_info));
 			}
 		};
 
@@ -189,17 +187,18 @@ namespace io {
 	}
 
 	void JsonWriter::Write(const std::vector<StatRequestResult>& results) {
-		json::Array json_array;
-		json_array.reserve(results.size());
-
+		json::Builder json_builder;
+		
+		auto json_array = json_builder.StartArray();
 		for (const auto& result : results) {
-			json::Dict json_dict;
-			json_dict.emplace("request_id"s, result.request_id);
+			auto json_dict = json_array.StartDict();
+			json_dict.Key("request_id"s).Value(result.request_id);		
 			std::visit(StatResultPrinter{ json_dict }, result.result);
-			json_array.push_back(std::move(json_dict));
+			json_dict.EndDict();
 		}
+		json_array.EndArray();
 
-		json::Print(json::Document(std::move(json_array)), output_);
+		json::Print(json::Document(json_builder.Build()), output_);
 	}
 
 } // namespace tc

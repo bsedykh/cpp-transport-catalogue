@@ -19,9 +19,9 @@ namespace json {
     };
 
     class Node {
-        using NodeValue = std::variant<nullptr_t, int, double, std::string, bool, Array, Dict>;
-
     public:
+        using Value = std::variant<nullptr_t, int, double, std::string, bool, Array, Dict>;
+
         Node() = default;
         Node(nullptr_t);
         Node(int value);
@@ -30,6 +30,7 @@ namespace json {
         Node(bool value);
         Node(Array array);
         Node(Dict map);
+        Node(Value value);
 
         bool IsNull() const;
         bool IsInt() const;
@@ -51,7 +52,7 @@ namespace json {
         bool operator!=(const Node& other) const;
 
     private:
-        NodeValue value_;
+        Value value_;
 
         static std::logic_error TypeMismatchException();
     };

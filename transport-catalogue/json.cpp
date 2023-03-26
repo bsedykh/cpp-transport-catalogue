@@ -414,10 +414,11 @@ namespace json {
     Node::Node(nullptr_t) {}
     Node::Node(int value) : value_(value) {}
     Node::Node(double value) : value_(value) {}
-    Node::Node(std::string value) : value_(value) {}
+    Node::Node(std::string value) : value_(std::move(value)) {}
     Node::Node(bool value) : value_(value) {}
-    Node::Node(Array array) : value_(array) {}
-    Node::Node(Dict map) : value_(map) {}
+    Node::Node(Array array) : value_(std::move(array)) {}
+    Node::Node(Dict map) : value_(std::move(map)) {}
+    Node::Node(Value value) : value_(std::move(value)) {}
 
     bool Node::IsNull() const {
         return std::holds_alternative<nullptr_t>(value_);
